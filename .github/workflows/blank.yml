@@ -1,0 +1,21 @@
+name: Keep Render Backend Alive
+
+on:
+  schedule:
+    # Run every 10 minutes
+    - cron: "*/10 * * * *"
+  workflow_dispatch:  # allow manual trigger from Actions tab
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Render backend
+        run: |
+          echo "Pinging Render backend to prevent sleep..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://sanctuary-home-interiors-website.onrender.com/)
+          echo "Response status: $STATUS"
+          if [ "$STATUS" -ne 200 ]; then
+            echo "⚠️ Warning: Server returned non-200 status ($STATUS)"
+          fi
