@@ -1,21 +1,54 @@
-name: Keep Render Backend Alive
+name: Keep Render App Alive
 
 on:
   schedule:
-    # Run every 10 minutes
-    - cron: "*/10 * * * *"
-  workflow_dispatch:  # allow manual trigger from Actions tab
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
 
 jobs:
-  keep-alive:
+  ping-render:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Ping Render backend
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
         run: |
-          echo "Pinging Render backend to prevent sleep..."
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://sanctuary-home-interiors-website.onrender.com/)
-          echo "Response status: $STATUS"
-          if [ "$STATUS" -ne 200 ]; then
-            echo "⚠️ Warning: Server returned non-200 status ($STATUS)"
-          fi
+          npm init -y
+          npm install playwright
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Open and Keep Render App Alive
+        run: |
+          node -e "
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const page = await browser.newPage();
+            
+            console.log('🔄 Pinging Render app...');
+            console.log('Time:', new Date().toISOString());
+            
+            try {
+              await page.goto('https://resume-hqeh.onrender.com', { 
+                waitUntil: 'networkidle',
+                timeout: 60000 
+              });
+              
+              console.log('✅ Successfully loaded:', await page.title());
+              console.log('📊 Status: App is awake');
+            } catch (error) {
+              console.error('❌ Error:', error.message);
+            } finally {
+              await browser.close();
+            }
+          })();
+          "
